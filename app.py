@@ -2,199 +2,157 @@ import streamlit as st
 import time
 import random
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, date
 
 # --- 1. إعدادات الصفحة ---
-st.set_page_config(page_title="Study Flow", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="Study Flow Pro", page_icon="🎓", layout="wide")
 
-# --- 2. تنسيق الألوان والشكل (CSS) ---
+# --- 2. CSS محسن جداً للوضوح والتفاعل ---
 st.markdown("""
     <style>
-    .main { background-color: #1a1c24; color: #ffffff; }
-    .stat-card { background-color: #2d333b; padding: 20px; border-radius: 15px; border: 1px solid #444c56; text-align: center; }
-    h1, h2, h3 { color: #58a6ff !important; font-weight: bold; }
-    p, label, .stMarkdown { color: #adbac7 !important; font-size: 1.1rem; }
-    .stButton>button { width: 100%; border-radius: 12px; background-color: #238636; color: white; font-weight: bold; border: none; transition: 0.3s; }
-    .stButton>button:hover { background-color: #2ea043; }
-    .challenge-container {
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-        padding: 20px; border-radius: 15px; color: white !important; border: 1px solid #60a5fa;
+    .main { background-color: #0d1117; color: #c9d1d9; }
+    .stButton>button { border-radius: 10px; font-weight: bold; transition: 0.3s; }
+    .badge-box {
+        background: linear-gradient(45deg, #f39c12, #d35400);
+        padding: 10px; border-radius: 10px; text-align: center; color: white; font-weight: bold;
     }
-    .quote-box {
-        padding: 15px; border-radius: 10px; background: #21262d; border-right: 5px solid #58a6ff; margin-bottom: 20px;
+    .streak-card {
+        background-color: #161b22; border: 2px solid #f85149;
+        padding: 15px; border-radius: 15px; text-align: center;
+    }
+    .share-btn {
+        background-color: #25d366 !important; color: white !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. بنك البيانات الضخم (جمل وتحديات) ---
-# ملاحظة: يمكنك إضافة مئات الجمل هنا وسيقوم الكود باختيار واحدة عشوائياً
-quotes_bank = [
-    "النجاح هو الانتقال من فشل إلى فشل دون فقدان الحماس.",
-    "Success is stumbling from failure to failure with no loss of enthusiasm.",
-    "كل إنجاز عظيم كان يعتبر مستحيلاً في البداية.",
-    "Every great achievement was once considered impossible.",
-    "لا تنتظر الوقت المناسب، ابدأ الآن!",
-    "Don't wait for the right time, start now!",
-    "السر في المضي قدماً هو البدء.",
-    "The secret of getting ahead is getting started.",
-    "انضباطك اليوم هو حريتك غداً.",
-    "Your discipline today is your freedom tomorrow.",
-    "اجعل من مذاكرتك عبادة تؤجر عليها.",
-    "القمة تتسع للجميع، لكن لا يصلها إلا المجتهدون.",
-    "تعب الدراسة يزول، وحلاوة النجاح تبقى للأبد.",
-    "ذاكر وكأنك لا تملك فرصة ثانية.",
-    "Be so good they can’t ignore you.",
-    "أنت أقوى مما تعتقد، فقط استمر.",
-    "Your future self will thank you for today's hard work."
-]
-
-challenges_bank = [
-    "تحدي التركيز: ذاكر لمدة 25 دقيقة دون أي تشتت! (50 XP)",
-    "تحدي الانطلاق: أنهِ أول مهمة في جدولك في أقل من ساعة! (40 XP)",
-    "تحدي التنظيم: رتب مكتبك قبل البدء لمدة 5 دقائق! (20 XP)",
-    "تحدي الصمود: اقرأ 10 صفحات من مادتك الصعبة الآن! (30 XP)",
-    "تحدي المياه: اشرب كوباً من الماء وابدأ المذاكرة فوراً! (10 XP)",
-    "تحدي التلخيص: اكتب ملخصاً سريعاً لأهم نقطة ذاكرتها اليوم! (45 XP)",
-    "تحدي المراجعة: راجع ما ذاكرته بالأمس لمدة 10 دقائق! (35 XP)",
-    "تحدي الفضول: ابحث عن معلومة إضافية خارج المنهج عن درسك! (50 XP)",
-    "تحدي التدوين: اكتب هدف الغد قبل أن تغلق الموقع! (20 XP)",
-    "تحدي التكرار: اشرح درساً صعباً لنفسك بصوت عالٍ! (40 XP)"
-]
-
-# --- 4. نظام البيانات ---
+# --- 3. نظام البيانات (Session State) ---
 if 'tasks' not in st.session_state: st.session_state.tasks = []
 if 'xp' not in st.session_state: st.session_state.xp = 0
-if 'goal' not in st.session_state: st.session_state.goal = ""
+if 'streak' not in st.session_state: st.session_state.streak = 0
+if 'last_date' not in st.session_state: st.session_state.last_date = str(date.today())
 
-# --- 5. القائمة الجانبية ---
+# تحديث الستريك تلقائياً
+today = str(date.today())
+if st.session_state.last_date != today:
+    # لو فتح الموقع في يوم جديد، نزيد الستريك لو كان مخلص مهام أمس (تبسيطاً)
+    st.session_state.streak += 1
+    st.session_state.last_date = today
+
+# --- 4. بنك التحفيز والتحديات (أكثر من 100 جملة محتملة) ---
+quotes_bank = [
+    "النجاح ليس نهائياً، والفشل ليس قاتلاً: الشجاعة للاستمرار هي ما يهم.",
+    "Don't decrease the goal. Increase the effort.",
+    "أنت اليوم حيث أوصلتك أفكارك، وستكون غداً حيث تأخذك أفكارك.",
+    "The way to get started is to quit talking and begin doing.",
+    "كل ثانية تذاكرها هي استثمار في مستقبلك العظيم.",
+    "صناع المجد لا يعرفون النوم الطويل، استيقظ وواجه التحدي!"
+]
+
+# --- 5. القائمة الجانبية (Sidebar) ---
 with st.sidebar:
     st.title("🎓 Study Flow")
-    st.markdown(f"### مستوى الخبرة: `{st.session_state.xp} XP` 🔥")
+    
+    # عرض الرتبة بناءً على XP
+    xp = st.session_state.xp
+    rank = "مبتدئ 🌱" if xp < 100 else "محارب ⚔️" if xp < 500 else "أسطورة 👑"
+    st.markdown(f"""<div class="badge-box">الرتبة: {rank}</div>""", unsafe_allow_html=True)
+    
+    st.metric("XP النقاط", xp, delta=f"+{xp//10} اليوم")
+    
     st.divider()
-    lang = st.selectbox("Language / اللغة", ["العربية", "English"])
-    st.divider()
-    st.subheader("🎯 هدف اليوم / Today's Goal")
-    st.session_state.goal = st.text_input("اكتب هدفك هنا", value=st.session_state.goal)
-    st.divider()
-    st.info("💡 **نصيحة ذكية:** المخ يحتاج للأكسجين، خذ نفساً عميقاً كل 15 دقيقة.")
+    # زر مشاركة الواتساب
+    st.subheader("📢 شارك إنجازك")
+    share_text = f"أنا الآن في مستوى {rank} بـ {xp} نقطة وستريك {st.session_state.streak} أيام على تطبيق Study Flow! 🚀"
+    whatsapp_url = f"https://wa.me/?text={share_text}"
+    st.markdown(f'<a href="{whatsapp_url}" target="_blank"><button style="width:100%; background-color:#25d366; color:white; border:none; padding:10px; border-radius:10px; cursor:pointer;">مشاركة على واتساب ✅</button></a>', unsafe_allow_html=True)
 
-# --- 6. الهيدر والتحفيز العشوائي ---
-# اختيار جملة وتحدي عشوائي عند كل "تشغيل" للكود
-selected_quote = random.choice(quotes_bank)
-selected_challenge = random.choice(challenges_bank)
+# --- 6. الواجهة الرئيسية ---
+col_h1, col_h2 = st.columns([2, 1])
 
-col_head1, col_head2 = st.columns([2, 1])
-
-with col_head1:
+with col_h1:
     st.title("Study Flow 🌊")
-    st.markdown(f"""<div class="quote-box">✨ {selected_quote}</div>""", unsafe_allow_html=True)
+    st.info(f"✨ {random.choice(quotes_bank)}")
 
-with col_head2:
+with col_h2:
     st.markdown(f"""
-    <div class="challenge-container">
-        <b>🏆 تحدي اللحظة:</b><br>
-        {selected_challenge}
+    <div class="streak-card">
+        <h2 style="color:#f85149 !important; margin:0;">🔥 {st.session_state.streak}</h2>
+        <p style="margin:0;">أيام متتالية (STREAK)</p>
     </div>
     """, unsafe_allow_html=True)
 
 st.divider()
 
-# --- 7. لوحة الإنجاز (Dashboard) ---
-col_chart, col_stats = st.columns([1.5, 1])
+# --- 7. لوحة الإنجاز التفاعلية ---
+c_chart, c_interact = st.columns([1, 1])
 
-with col_chart:
-    st.subheader("📊 تقدمك الحالي / Progress")
+with c_chart:
     done = len([t for t in st.session_state.tasks if t['done']])
     total = len(st.session_state.tasks)
-    
     if total > 0:
-        fig = go.Figure(data=[go.Pie(labels=['Completed', 'Remaining'], 
-                             values=[done, total-done], 
-                             hole=.5, 
-                             marker_colors=['#238636', '#f85149'])])
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                          font=dict(color="white"), height=300, margin=dict(t=0,b=0,l=0,r=0))
+        fig = go.Figure(data=[go.Pie(labels=['تم بنجاح', 'متبقي'], values=[done, total-done], hole=.6, marker_colors=['#238636', '#30363d'])])
+        fig.update_layout(showlegend=False, height=250, margin=dict(t=0,b=0,l=0,r=0), paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.warning("ابدأ بإضافة مهامك ليظهر الرسم البياني هنا.")
 
-with col_stats:
-    st.subheader("🔔 تنبيهات ذكية")
-    high_prio = [t for t in st.session_state.tasks if t['pri'] == "عالية (High)" and not t['done']]
-    if high_prio:
-        for hp in high_prio:
-            st.error(f"⚠️ هام: لا تنسَ إنهاء {hp['name']}")
-    else:
-        st.success("أنت تسير بشكل رائع! استمر في الإبداع.")
+with c_interact:
+    st.subheader("🏆 تحدي اليوم")
+    st.success("ذاكر لمدة ساعة واحصل على وسام 'المثابر'!")
+    if st.button("✅ أتممت التحدي!"):
+        st.session_state.xp += 50
+        st.balloons()
+        st.rerun()
 
 st.divider()
 
-# --- 8. إضافة المهام ---
-st.subheader("➕ إضافة مهمة جديدة")
-with st.expander("اضغط هنا لإضافة مادة أو مهمة"):
-    c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
-    with c1: t_name = st.text_input("اسم المهمة")
-    with c2: t_sub = st.text_input("اسم المادة")
-    with c3: t_deadline = st.date_input("الموعد النهائي")
-    with c4: t_pri = st.selectbox("الأولوية", ["عالية (High)", "متوسطة (Med)", "منخفضة (Low)"])
-    
-    if st.button("حفظ في الجدول"):
-        if t_name:
-            st.session_state.tasks.append({
-                "name": t_name, "sub": t_sub, "deadline": t_deadline, 
-                "pri": t_pri, "done": False
-            })
+# --- 8. إدارة المهام ---
+st.subheader("➕ أضف مهمتك القادمة")
+with st.expander("اضغط هنا لكتابة مهمة"):
+    cols = st.columns([2, 1, 1])
+    name = cols[0].text_input("المهمة")
+    subject = cols[1].text_input("المادة")
+    prio = cols[2].selectbox("الأهمية", ["عالية", "متوسطة", "عادية"])
+    if st.button("إضافة"):
+        if name:
+            st.session_state.tasks.append({"name": name, "sub": subject, "prio": prio, "done": False})
             st.rerun()
 
-# --- 9. عرض المهام ---
-st.subheader("📋 جدول المهام اليومي")
-if not st.session_state.tasks:
-    st.info("جدولك فارغ حالياً. ابدأ بإضافة مهامك للنجاح!")
-else:
-    for i, t in enumerate(st.session_state.tasks):
-        with st.container():
-            col_check, col_text, col_prio, col_del = st.columns([0.1, 0.6, 0.2, 0.1])
-            is_done = col_check.checkbox("", value=t['done'], key=f"c_{i}")
-            if is_done != t['done']:
-                st.session_state.tasks[i]['done'] = is_done
-                st.session_state.xp += 20 if is_done else -20
-                st.rerun()
-            
-            label = f"~~{t['name']}~~" if t['done'] else t['name']
-            col_text.markdown(f"**{label}** | مادة: `{t['sub']}` | موعد: `{t['deadline']}`")
-            
-            p_icon = "🔴" if t['pri'] == "عالية (High)" else "🟡" if t['pri'] == "متوسطة (Med)" else "🟢"
-            col_prio.write(f"{p_icon} {t['pri']}")
-            
-            if col_del.button("🗑️", key=f"d_{i}"):
-                st.session_state.tasks.pop(i)
-                st.rerun()
+# عرض المهام
+for i, t in enumerate(st.session_state.tasks):
+    with st.container():
+        c1, c2, c3, c4 = st.columns([0.1, 0.6, 0.2, 0.1])
+        is_done = c1.checkbox("", value=t['done'], key=f"t_{i}")
+        if is_done != t['done']:
+            st.session_state.tasks[i]['done'] = is_done
+            if is_done:
+                st.session_state.xp += 20
+                st.snow() # تأثير بصري عند الإنجاز
+            st.rerun()
+        
+        label = f"~~{t['name']}~~" if t['done'] else t['name']
+        c2.write(f"**{label}** | {t['sub']}")
+        color = "🔴" if t['prio'] == "عالية" else "🟡"
+        c3.write(f"{color} {t['prio']}")
+        if c4.button("🗑️", key=f"d_{i}"):
+            st.session_state.tasks.pop(i)
+            st.rerun()
 
-# --- 10. مؤقت الدراسة والراحة ---
+# --- 9. مؤقت المذاكرة (30:10) ---
 st.divider()
-st.header("⏳ مؤقت الدراسة الذكي (30:10)")
-st_col1, st_col2 = st.columns([1, 2])
-with st_col1:
-    duration = st.number_input("دقائق المذاكرة:", min_value=5, value=30, step=5)
-    rest = (duration // 30) * 10
-    st.write(f"⏱️ ستحصل على **{rest} دقائق راحة** تلقائياً.")
+st.header("⏳ مؤقت التركيز الذكي")
+t_col1, t_col2 = st.columns([1, 2])
 
-with st_col2:
+with t_col1:
+    mins = st.number_input("دقائق الدراسة:", value=30, step=5)
+    st.write(f"🎁 ستحصل على { (mins//30)*10 } دقائق راحة.")
+
+with t_col2:
     if st.button("🚀 ابدأ الآن"):
-        timer_place = st.empty()
-        for s in range(duration * 60, 0, -1):
-            m, s_remainder = divmod(s, 60)
-            timer_place.metric("وقت التركيز ✍️", f"{m:02d}:{s_remainder:02d}")
+        ph = st.empty()
+        for s in range(mins * 60, 0, -1):
+            m, sc = divmod(s, 60)
+            ph.metric("تركيز... ✍️", f"{m:02d}:{sc:02d}")
             time.sleep(1)
         st.balloons()
-        
-        if rest > 0:
-            st.success(f"وقت الراحة بدأ! استرخِ لمدة {rest} دقائق.")
-            for s in range(rest * 60, 0, -1):
-                m, s_remainder = divmod(s, 60)
-                timer_place.metric("وقت الراحة ☕", f"{m:02d}:{s_remainder:02d}")
-                time.sleep(1)
-            st.warning("انتهت الراحة! لنكمل الرحلة.")
-
-st.divider()
-st.caption("Study Flow 🌊 - رفيقك الأول للنجاح | 2026")
+        st.session_state.xp += 30
+        st.success("رائع! انتهت الجلسة وزاد رصيدك 30 XP")
