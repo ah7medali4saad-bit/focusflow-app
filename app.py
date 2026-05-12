@@ -2,77 +2,77 @@ import streamlit as st
 import time
 import random
 import plotly.graph_objects as go
-from datetime import datetime, date
 
-# --- 1. إعدادات الصفحة ---
-st.set_page_config(page_title="Study Flow Ultimate", page_icon="🎓", layout="wide")
+# --- 1. إعدادات الصفحة الأساسية ---
+st.set_page_config(page_title="Study Flow Pro", page_icon="🎓", layout="wide")
 
-# --- 2. محرك الألوان والوضوح (إصلاح خطأ unsafe_allow_html) ---
+# --- 2. محرك الألوان الفاتحة (CSS) - وضوح 100% ---
 st.markdown("""
     <style>
-    /* فرض الخلفية الداكنة العميقة */
-    .stApp { background-color: #0d1117 !important; }
-    
-    /* جعل كل النصوص بيضاء ناصعة تماماً */
-    h1, h2, h3, p, span, label, li, div, .stMarkdown { 
-        color: #ffffff !important; 
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    /* جعل الخلفية بيضاء تماماً */
+    .stApp {
+        background-color: #ffffff !important;
     }
     
-    /* تنسيق القائمة الجانبية */
-    section[data-testid="stSidebar"] {
-        background-color: #161b22 !important;
-        border-right: 1px solid #30363d;
+    /* جعل كل النصوص سوداء غامقة وواضحة */
+    h1, h2, h3, p, span, label, li, .stMarkdown {
+        color: #1a1a1a !important;
+        font-family: 'Segoe UI', sans-serif !important;
     }
 
-    /* تنسيق كروت الأوسمة */
+    /* تحسين القائمة الجانبية لتكون رمادي فاتح مريح */
+    section[data-testid="stSidebar"] {
+        background-color: #f8f9fa !important;
+        border-right: 1px solid #dee2e6;
+    }
+    
+    /* صناديق المهام والجمل */
+    .quote-box { 
+        padding: 15px; 
+        border-radius: 10px; 
+        background: #e9ecef; 
+        border-right: 5px solid #007bff; 
+        margin-bottom: 20px; 
+    }
+    
+    .streak-card { 
+        background-color: #fff5f5; 
+        border: 2px solid #ff4d4d; 
+        padding: 15px; 
+        border-radius: 15px; 
+        text-align: center; 
+    }
+
+    /* كروت الأوسمة في الوضع الفاتح */
     .badge-card {
-        background: linear-gradient(135deg, #1c2128 0%, #2d333b 100%);
+        background: #ffffff;
         border: 2px solid #f0883e;
         border-radius: 15px;
         padding: 15px;
         text-align: center;
         margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    .badge-locked { opacity: 0.2; filter: grayscale(1); border: 2px dashed #484f58; }
-    
-    /* تنسيق الأزرار */
+    .badge-locked { opacity: 0.3; filter: grayscale(1); border: 2px dashed #adb5bd; }
+
+    /* الأزرار */
     .stButton>button {
-        background-color: #238636 !important;
-        color: #ffffff !important;
-        border: 1px solid #2ea043 !important;
+        background-color: #28a745 !important;
+        color: white !important;
         border-radius: 10px;
         font-weight: bold;
         width: 100%;
+        border: none;
     }
-
-    /* كروت الستريك والجمل */
-    .quote-box { padding: 15px; border-radius: 10px; background: #21262d; border-right: 5px solid #58a6ff; margin-bottom: 20px; }
-    .streak-card { background-color: #161b22; border: 2px solid #f85149; padding: 15px; border-radius: 15px; text-align: center; }
     </style>
-    """, unsafe_allow_html=True) # تم تصحيح الكلمة من unsafe_allow_status
+    """, unsafe_allow_html=True)
 
-# --- 3. بنك البيانات الضخم ---
-quotes_bank = [
-    "النجاح هو مجموع جهود صغيرة تتكرر يوماً بعد يوم.",
-    "انضباطك اليوم هو حريتك غداً.",
-    "تعب الدراسة يزول، وحلاوة النجاح تبقى للأبد."
-]
-
-challenges_bank = [
-    "ذاكر لمدة 25 دقيقة دون أي تشتت! (50 XP)",
-    "اشرح درساً صعباً لنفسك بصوت عالٍ! (40 XP)",
-    "أنهِ أول مهمة في جدولك الآن! (30 XP)"
-]
-
-# --- 4. نظام إدارة البيانات (Session State) ---
+# --- 3. بنك البيانات ---
 if 'tasks' not in st.session_state: st.session_state.tasks = []
 if 'xp' not in st.session_state: st.session_state.xp = 0
 if 'streak' not in st.session_state: st.session_state.streak = 1
 if 'challenge_done' not in st.session_state: st.session_state.challenge_done = False
 if 'notes' not in st.session_state: st.session_state.notes = ""
-if 'daily_q' not in st.session_state: st.session_state.daily_q = random.choice(quotes_bank)
-if 'daily_c' not in st.session_state: st.session_state.daily_c = random.choice(challenges_bank)
 if 'badges' not in st.session_state:
     st.session_state.badges = {
         "b1": {"un": False, "n": "أول خطوة", "i": "🌱", "d": "أكملت أول مهمة!"},
@@ -81,108 +81,98 @@ if 'badges' not in st.session_state:
         "b4": {"un": False, "n": "وحش المذاكرة", "i": "🔥", "d": "أتممت تحدي اليوم!"}
     }
 
-def check_badges():
-    done_tasks = [t for t in st.session_state.tasks if t['done']]
-    if len(done_tasks) >= 1 and not st.session_state.badges["b1"]["un"]:
-        st.session_state.badges["b1"]["un"] = True
-        st.balloons()
-    if st.session_state.xp >= 500 and not st.session_state.badges["b3"]["un"]:
-        st.session_state.badges["b3"]["un"] = True
-        st.balloons()
-
-# --- 5. القائمة الجانبية (Sidebar) ---
+# --- 4. القائمة الجانبية ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#58a6ff;'>📊 لوحة التحكم</h2>", unsafe_allow_html=True)
-    xp = st.session_state.xp
-    rank = "مبتدئ 🌱" if xp < 200 else "محارب ⚔️" if xp < 1000 else "أسطورة 👑"
-    st.success(f"الرتبة: {rank}")
-    st.info(f"النقاط: {xp} XP")
+    st.markdown("<h2 style='color:#007bff;'>📊 لوحة التحكم</h2>", unsafe_allow_html=True)
+    st.metric("رصيد النقاط", f"{st.session_state.xp} XP")
     
     st.divider()
-    st.subheader("📒 مفكرة التشتت")
-    st.session_state.notes = st.text_area("أفرغ تشتتك هنا..", value=st.session_state.notes, height=150)
+    st.subheader("📒 نوتة التشتت")
+    st.session_state.notes = st.text_area("اكتب فكرتك هنا..", value=st.session_state.notes, height=120)
     
     st.divider()
-    share_msg = f"أنا برتبة {rank} بنقاط {xp} في Study Flow! 🔥"
-    st.markdown(f'<a href="https://wa.me/?text={share_msg}" target="_blank"><button style="width:100%; background:#25d366; color:white; border:none; padding:10px; border-radius:10px; cursor:pointer; font-weight:bold;">🚀 مشاركة الإنجاز</button></a>', unsafe_allow_html=True)
+    share_msg = f"نقاطي {st.session_state.xp} في Study Flow! 🚀"
+    st.markdown(f'<a href="https://wa.me/?text={share_msg}" target="_blank"><button style="width:100%; background:#25d366; color:white; border:none; padding:10px; border-radius:10px; font-weight:bold; cursor:pointer;">شارك مستواك ✅</button></a>', unsafe_allow_html=True)
 
-# --- 6. الواجهة الرئيسية ---
+# --- 5. الهيدر والستريك ---
 col_h1, col_h2 = st.columns([2, 1])
 with col_h1:
     st.title("Study Flow 🌊")
-    st.markdown(f'<div class="quote-box">✨ {st.session_state.daily_q}</div>', unsafe_allow_html=True)
-with col_h2:
-    st.markdown(f"""<div class="streak-card"><h1 style="color:#f85149 !important; margin:0;">🔥 {st.session_state.streak}</h1><p style="margin:0; color:white !important;">يوم متتالي</p></div>""", unsafe_allow_html=True)
+    st.markdown('<div class="quote-box">"النجاح ليس صدفة، بل هو نتيجة العمل الذكي والمستمر."</div>', unsafe_allow_html=True)
 
-# --- 7. الأوسمة التفاعلية ---
+with col_h2:
+    st.markdown(f"""<div class="streak-card"><h1 style="color:#ff4d4d !important; margin:0;">🔥 {st.session_state.streak}</h1><p style="margin:0;">يوم متتالي</p></div>""", unsafe_allow_html=True)
+
+# --- 6. الأوسمة ---
 st.divider()
-st.subheader("🏅 خزانة الأوسمة")
+st.subheader("🏅 الأوسمة المحققة")
 b_cols = st.columns(4)
 for idx, (k, b) in enumerate(st.session_state.badges.items()):
     with b_cols[idx]:
         lock = "" if b["un"] else "badge-locked"
-        st.markdown(f"""<div class="badge-card {lock}"><div style="font-size:30px;">{b['i']}</div><div style="color:#f0883e !important; font-weight:bold;">{b['n']}</div><div style="font-size:10px; color:#ffffff !important;">{b['d']}</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="badge-card {lock}"><div style="font-size:30px;">{b['i']}</div><b style="color:#f0883e;">{b['n']}</b><div style="font-size:10px; color:#6c757d;">{b['d']}</div></div>""", unsafe_allow_html=True)
         if b["un"]:
-            b_wa = f"https://wa.me/?text=حصلت على وسام {b['n']} {b['i']} في Study Flow! 🏆"
-            st.markdown(f'<a href="{b_wa}" target="_blank"><button style="width:100%; background:#075e54; font-size:10px; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;">شارك الوسام ✅</button></a>', unsafe_allow_html=True)
+            st.markdown(f'<a href="https://wa.me/?text=حصلت على وسام {b["n"]} {b["i"]}!" target="_blank"><button style="width:100%; background:#075e54; font-size:10px; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;">شارك الوسام ✅</button></a>', unsafe_allow_html=True)
 
-# --- 8. تحدي اليوم ---
+# --- 7. التحدي والإحصائيات ---
 st.divider()
-st.subheader("🎯 تحدي اليوم")
-if not st.session_state.challenge_done:
-    st.warning(f"**التحدي:** {st.session_state.daily_c}")
-    if st.button("✅ أتممت التحدي!"):
-        st.session_state.challenge_done = True
-        st.session_state.xp += 100
-        st.session_state.badges["b4"]["un"] = True
-        st.balloons()
-        st.rerun()
-else:
-    st.success("🎉 أحسنت! أتممت تحدي اليوم بنجاح.")
+c_ch, c_gr = st.columns([1.5, 1])
+with c_ch:
+    st.subheader("🎯 تحدي اليوم")
+    if not st.session_state.challenge_done:
+        st.info("التحدي: ذاكر لمدة 25 دقيقة بتركيز كامل!")
+        if st.button("أتممت التحدي ✅"):
+            st.session_state.challenge_done = True
+            st.session_state.xp += 100
+            st.session_state.badges["b4"]["un"] = True
+            st.balloons()
+            st.rerun()
+    else:
+        st.success("🎉 أحسنت! التحدي اكتمل.")
 
-# --- 9. إدارة المهام ---
+with c_gr:
+    done_n = len([t for t in st.session_state.tasks if t['done']])
+    total_n = len(st.session_state.tasks)
+    if total_n > 0:
+        fig = go.Figure(data=[go.Pie(labels=['تم', 'متبقي'], values=[done_num, total_n-done_n], hole=.6, marker_colors=['#28a745', '#e9ecef'])])
+        fig.update_layout(height=200, margin=dict(t=0,b=0,l=0,r=0), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+# --- 8. قائمة المهام ---
 st.divider()
 st.subheader("📋 قائمة المهام")
-with st.expander("➕ أضف مهمة جديدة"):
-    c_i1, c_i2 = st.columns([3, 1])
-    name = c_i1.text_input("المهمة")
-    prio = c_i2.selectbox("الأولوية", ["عالية 🔥", "عادية 🟢"])
-    if st.button("حفظ"):
+with st.expander("➕ أضف مهمة"):
+    name = st.text_input("اسم المهمة")
+    if st.button("حفظ المهمة"):
         if name:
-            st.session_state.tasks.append({"name": name, "done": False, "prio": prio})
+            st.session_state.tasks.append({"name": name, "done": False})
             st.rerun()
 
 for i, t in enumerate(st.session_state.tasks):
-    with st.container():
-        c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
-        done = c1.checkbox("", value=t['done'], key=f"tk_{i}")
-        if done != t['done']:
-            st.session_state.tasks[i]['done'] = done
-            if done: 
-                st.session_state.xp += 20
-                st.snow()
-            check_badges()
-            st.rerun()
-        txt = f"~~{t['name']}~~" if t['done'] else t['name']
-        c2.write(f"**{txt}** | {t['prio']}")
-        if c3.button("🗑️", key=f"dl_{i}"):
-            st.session_state.tasks.pop(i)
-            st.rerun()
+    c1, c2, c3 = st.columns([0.1, 0.8, 0.1])
+    done = c1.checkbox("", value=t['done'], key=f"t_{i}")
+    if done != t['done']:
+        st.session_state.tasks[i]['done'] = done
+        if done: st.session_state.xp += 20
+        st.rerun()
+    txt = f"~~{t['name']}~~" if t['done'] else t['name']
+    c2.write(f"**{txt}**")
+    if c3.button("🗑️", key=f"d_{i}"):
+        st.session_state.tasks.pop(i)
+        st.rerun()
 
-# --- 10. مؤقت التركيز ---
+# --- 9. المؤقت ---
 st.divider()
 st.subheader("⏳ مؤقت التركيز")
-if st.button("🚀 ابدأ مؤقت 30 دقيقة"):
+if st.button("🚀 ابدأ 30 دقيقة"):
     st.session_state.badges["b2"]["un"] = True
-    check_badges()
     ph = st.empty()
     for s in range(30 * 60, 0, -1):
         m, sc = divmod(s, 60)
-        ph.metric("وقت التركيز ✍️", f"{m:02d}:{sc:02d}")
+        ph.metric("متبقي", f"{m:02d}:{sc:02d}")
         time.sleep(1)
-    st.balloons()
     st.session_state.xp += 50
     st.rerun()
 
 st.divider()
-st.caption("Study Flow Ultimate Pro 🌊 - 2026")
+st.caption("Study Flow Pro 🌊 - Light Edition 2026")
