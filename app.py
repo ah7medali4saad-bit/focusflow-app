@@ -7,14 +7,23 @@ from datetime import datetime, timedelta
 # --- 1. إعدادات الصفحة ---
 st.set_page_config(page_title="Study Flow AI Ultimate", page_icon="🤖", layout="wide")
 
-# --- 2. محرك التنسيق المتقدم (CSS) - منع التداخل ووضوح فائق ---
+# --- 2. محرك التنسيق المتقدم (CSS) - حل مشكلة القائمة الجانبية نهائياً ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; }
     
-    h1, h2, h3, p, span, label {
+    /* إصلاح القائمة الجانبية ومنع تداخل الكلام */
+    [data-testid="stSidebar"] {
+        background-color: #f8f9fa !important;
+        min-width: 300px !important; /* تكبير عرض القائمة قليلاً */
+    }
+    
+    [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label {
         color: #2c3e50 !important;
-        line-height: 1.6 !important;
+        white-space: normal !important; /* السماح للكلام بالنزول لسطر جديد */
+        word-wrap: break-word !important;
+        font-size: 16px !important;
+        line-height: 1.5 !important;
     }
 
     /* كروت الأوسمة */
@@ -25,6 +34,7 @@ st.markdown("""
         text-align: center;
         border: 1px solid #e0e0e0;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 10px;
     }
     .badge-locked { opacity: 0.2; filter: grayscale(1); }
 
@@ -34,7 +44,7 @@ st.markdown("""
         border-right: 5px solid #1e88e5;
         padding: 15px;
         border-radius: 10px;
-        margin-top: 10px;
+        margin-bottom: 15px;
     }
 
     /* الستريك الناري */
@@ -44,13 +54,6 @@ st.markdown("""
         border-radius: 15px;
         padding: 15px;
         text-align: center;
-    }
-    
-    /* تحسين الأزرار */
-    .stButton>button {
-        border-radius: 8px !important;
-        font-weight: bold !important;
-        transition: 0.3s;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -71,22 +74,23 @@ if 'badges' not in st.session_state:
         "b5": {"un": False, "n": "المنظم", "i": "📚", "d": "أضفت 5 مهام!"}
     }
 
-# --- 4. القائمة الجانبية (الرتب والتقدم) ---
+# --- 4. القائمة الجانبية (تم تحسين الوضوح هنا) ---
 with st.sidebar:
     st.title("👤 ملفك الشخصي")
     xp = st.session_state.xp
     rank = "طالب مستجد 🌱" if xp < 200 else "محارب ⚔️" if xp < 1000 else "دكتور 🎓"
-    st.subheader(f"الرتبة: {rank}")
+    
+    st.subheader(f"الرتبة الحالية: \n{rank}")
     st.progress(min(xp/1000, 1.0))
-    st.info(f"النقاط الحالية: {xp} XP")
+    st.write(f"**مجموع النقاط:** {xp} XP")
     
     st.divider()
-    st.subheader("📒 نوتة التشتت")
-    st.session_state.notes = st.text_area("أفرغ تشتتك هنا..", value=st.session_state.notes, height=120)
+    st.subheader("📒 مفكرة التشتت")
+    st.session_state.notes = st.text_area("إذا جاءت فكرة في بالك وأنت تذاكر، اكتبها هنا لتفرغ عقلك وتركز:", value=st.session_state.notes, height=150)
     
     st.divider()
     share_msg = f"أنا برتبة {rank} في Study Flow! 🚀"
-    st.markdown(f'<a href="https://wa.me/?text={share_msg}" target="_blank"><button style="width:100%; background:#25d366; color:white; border:none; padding:10px; border-radius:10px; cursor:pointer;">🚀 شارك مستواك</button></a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="https://wa.me/?text={share_msg}" target="_blank"><button style="width:100%; background:#25d366; color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;">🚀 شارك مستواك الآن</button></a>', unsafe_allow_html=True)
 
 # --- 5. الهيدر والستريك ---
 c_h1, c_h2 = st.columns([2, 1])
@@ -108,14 +112,15 @@ for idx, (k, b) in enumerate(st.session_state.badges.items()):
 
 # --- 7. قسم التخطيط الذكي (AI Suggestion) ---
 st.divider()
-st.subheader("🤖 مساعدك الذكي")
+st.subheader("🤖 مساعد الجدول الذكي")
 col_ai1, col_ai2 = st.columns([1, 2])
 
 with col_ai1:
-    if st.button("🪄 توليد جدول مذاكرة مقترح"):
+    st.write("بعد إضافة مهامك، اضغط الزر ليقوم الذكاء الاصطناعي بتنظيم وقتك:")
+    if st.button("🪄 توليد جدول مذاكرة"):
         active_tasks = [t['name'] for t in st.session_state.tasks if not t['done']]
         if not active_tasks:
-            st.error("أضف بعض المهام أولاً ليقترح الـ AI جدولاً!")
+            st.error("أضف بعض المهام في قائمة المهام أولاً!")
         else:
             st.session_state.badges["b4"]["un"] = True
             current_time = datetime.now()
@@ -124,7 +129,7 @@ with col_ai1:
                 start_str = current_time.strftime("%I:%M %p")
                 current_time += timedelta(minutes=45)
                 end_str = current_time.strftime("%I:%M %p")
-                plan.append(f"⏱️ **{start_str} - {end_str}**: مذاكرة ({task})")
+                plan.append(f"⏱️ **{start_str} - {end_str}**: {task}")
                 current_time += timedelta(minutes=10)
                 plan.append(f"☕ **راحة 10 دقائق**")
             st.session_state.ai_plan = plan
@@ -132,7 +137,7 @@ with col_ai1:
 with col_ai2:
     if st.session_state.ai_plan:
         with st.container():
-            st.markdown('<div class="ai-schedule"><b>📅 الجدول المقترح لمهامك الحالية:</b></div>', unsafe_allow_html=True)
+            st.markdown('<div class="ai-schedule"><b>📅 جدولك المقترح لليوم:</b></div>', unsafe_allow_html=True)
             for step in st.session_state.ai_plan:
                 st.write(step)
 
@@ -141,8 +146,8 @@ st.divider()
 c1, c2 = st.columns([1.5, 1])
 with c1:
     st.subheader("📋 قائمة المهام")
-    with st.expander("➕ أضف مهمة"):
-        t_name = st.text_input("اسم المهمة")
+    with st.expander("➕ أضف مهمة جديدة"):
+        t_name = st.text_input("ماذا ستذاكر اليوم؟")
         if st.button("حفظ المهمة"):
             if t_name:
                 st.session_state.tasks.append({"name": t_name, "done": False})
@@ -167,12 +172,12 @@ with c1:
                 st.rerun()
 
 with c2:
-    st.subheader("📊 تقدمك")
+    st.subheader("📊 إحصائيات الإنجاز")
     done_n = len([t for t in st.session_state.tasks if t['done']])
     total_n = len(st.session_state.tasks)
     if total_n > 0:
-        fig = go.Figure(data=[go.Pie(labels=['تم', 'باقي'], values=[done_n, total_n-done_n], hole=.6, marker_colors=['#27ae60', '#ecf0f1'])])
-        fig.update_layout(height=200, margin=dict(t=0,b=0,l=0,r=0), showlegend=False)
+        fig = go.Figure(data=[go.Pie(labels=['تمت', 'باقية'], values=[done_n, total_n-done_n], hole=.6, marker_colors=['#27ae60', '#ecf0f1'])])
+        fig.update_layout(height=250, margin=dict(t=0,b=0,l=0,r=0), showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
 
 # --- 9. التحدي والمؤقت ---
@@ -181,12 +186,12 @@ col_f1, col_f2 = st.columns(2)
 with col_f1:
     st.subheader("🎯 تحدي اليوم")
     if not st.session_state.challenge_done:
-        st.warning("التحدي: ذاكر 25 دقيقة بتركيز عميق الآن!")
-        if st.button("أنجزت التحدي! ✅"):
+        st.warning("التحدي: ذاكر لمدة 25 دقيقة بتركيز عميق (جلسة بومودورو)!")
+        if st.button("أتممت التحدي! (+100 XP)"):
             st.session_state.challenge_done = True
             st.session_state.xp += 100
             st.rerun()
-    else: st.success("🎉 تحدي اليوم مكتمل!")
+    else: st.success("🎉 تحدي اليوم مكتمل بنجاح!")
 
 with col_f2:
     st.subheader("⏳ مؤقت التركيز")
@@ -201,4 +206,4 @@ with col_f2:
         st.rerun()
 
 st.divider()
-st.caption("Study Flow AI Pro 🌊 - 2026")
+st.caption("Study Flow AI Pro 🌊 - الإصدار النهائي المنظم 2026")
